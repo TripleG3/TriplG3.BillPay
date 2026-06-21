@@ -8,3 +8,5 @@ global using System.Threading.Tasks;
 
 global using TripleG3.BillPay.Models;
 global using TripleG3.BillPay.Services;
+global using TripleG3.BillPay.ViewModels;
+global using TripleG3.BillPay.Views;

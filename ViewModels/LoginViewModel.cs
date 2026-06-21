@@ -29,7 +29,7 @@ public sealed class LoginViewModel(IUserService userService, ISessionService ses
         try
         {
             var user = await userService.GetUserAsync(Username);
-            if (string.IsNullOrWhiteSpace(user.Username))
+            if (string.IsNullOrWhiteSpace(user?.Username))
             {
                 ErrorMessage = "User not found.";
                 return;
