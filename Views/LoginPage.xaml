@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewModels="clr-namespace:TripleG3.BillPay.ViewModels"
+             xmlns:views="clr-namespace:TripleG3.BillPay.Views"
+             x:Class="TripleG3.BillPay.Views.LoginPage"
+             x:DataType="viewModels:LoginViewModel"
+             Title="Login">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16">
+            <views:AuthHeaderView />
+            <Entry Placeholder="Username" Text="{Binding Username}" />
+            <Label Text="{Binding ErrorMessage}" TextColor="Red" />
+            <Button Text="Login" Command="{Binding LoginCommand}" />
+            <Button Text="Create account" Command="{Binding GoToRegisterCommand}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

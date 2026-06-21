@@ -1,70 +1,79 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
-using System.Threading.Tasks;
-using TripleG3.BillPay.Models;
-using TripleG3.BillPay.Services;
-
 namespace TripleG3.BillPay.Services;
 
-public class JsonFileUserService : IUserService
+public sealed class JsonFileUserService(string basePath) : IUserService
 {
-    private readonly string _basePath;
-    public JsonFileUserService(string basePath)
-    {
-        _basePath = basePath;
-        Directory.CreateDirectory(_basePath);
-    }
+    private readonly JsonSerializerOptions _serializerOptions = new() { WriteIndented = true };
 
-    private string UserPath(string username) => Path.Combine(_basePath, username + ".json");
+    private string UserPath(string username) => Path.Combine(basePath, username + ".json");
 
-    public async Task<User> GetUserAsync(string username)
+    public async Task<User?> GetUserAsync(string username)
     {
+        Directory.CreateDirectory(basePath);
+
         var path = UserPath(username);
-        if (!File.Exists(path)) return new User { Username = username };
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
         var json = await File.ReadAllTextAsync(path);
-        return JsonSerializer.Deserialize<User>(json) ?? new User { Username = username };
+        return JsonSerializer.Deserialize<User>(json);
     }
 
     public async Task<IEnumerable<User>> GetAllUsersAsync()
     {
+        Directory.CreateDirectory(basePath);
+
         var users = new List<User>();
-        foreach (var file in Directory.GetFiles(_basePath, "*.json"))
+        foreach (var file in Directory.GetFiles(basePath, "*.json"))
         {
             var json = await File.ReadAllTextAsync(file);
             var user = JsonSerializer.Deserialize<User>(json);
-            if (user != null) users.Add(user);
+            if (user is not null)
+            {
+                users.Add(user);
+            }
         }
+
         return users;
     }
 
     public async Task SaveUserAsync(User user)
     {
+        Directory.CreateDirectory(basePath);
+
         var path = UserPath(user.Username);
-        var json = JsonSerializer.Serialize(user, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(user, _serializerOptions);
         await File.WriteAllTextAsync(path, json);
     }
 
     public async Task AddBillOrPayAsync(string username, BillOrPay billOrPay)
     {
-        var user = await GetUserAsync(username);
-        user.BillOrPays.Add(billOrPay);
-        await SaveUserAsync(user);
+        var user = await GetRequiredUserAsync(username);
+        var updatedUser = user with { BillOrPays = new List<BillOrPay>(user.BillOrPays) { billOrPay } };
+        await SaveUserAsync(updatedUser);
     }
 
     public async Task UpdateBillOrPayAsync(string username, BillOrPay billOrPay)
     {
-        var user = await GetUserAsync(username);
-        var idx = user.BillOrPays.FindIndex(b => b.Id == billOrPay.Id);
-        if (idx >= 0) user.BillOrPays[idx] = billOrPay;
-        await SaveUserAsync(user);
+        var user = await GetRequiredUserAsync(username);
+        var billOrPays = user.BillOrPays
+            .Select(existing => existing.Id == billOrPay.Id ? billOrPay : existing)
+            .ToList();
+
+        await SaveUserAsync(user with { BillOrPays = billOrPays });
     }
 
     public async Task DeleteBillOrPayAsync(string username, string billId)
     {
-        var user = await GetUserAsync(username);
-        user.BillOrPays.RemoveAll(b => b.Id == billId);
-        await SaveUserAsync(user);
+        var user = await GetRequiredUserAsync(username);
+        var billOrPays = user.BillOrPays
+            .Where(existing => existing.Id != billId)
+            .ToList();
+
+        await SaveUserAsync(user with { BillOrPays = billOrPays });
     }
+
+    private async Task<User> GetRequiredUserAsync(string username) =>
+        await GetUserAsync(username) ?? throw new InvalidOperationException($"User '{username}' was not found.");
 }

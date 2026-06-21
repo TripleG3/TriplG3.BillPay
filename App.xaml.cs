@@ -1,16 +1,26 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-
-namespace TripleG3.BillPay;
+﻿namespace TripleG3.BillPay;
 
 public partial class App : Application
 {
-	public App()
+	private readonly ISessionService _sessionService;
+
+	public App(ISessionService sessionService)
 	{
+		_sessionService = sessionService;
 		InitializeComponent();
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
-		return new Window(new AppShell());
+		var shell = new AppShell();
+		var window = new Window(shell);
+
+		window.Created += async (_, _) =>
+		{
+			var session = await _sessionService.GetCurrentSessionAsync();
+			await shell.GoToAsync(session?.IsLoggedIn is true ? "//home" : "//login");
+		};
+
+		return window;
 	}
 }
